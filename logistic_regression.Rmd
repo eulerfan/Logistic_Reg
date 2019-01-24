@@ -1,0 +1,89 @@
+---
+title: "Logistic Regession"
+output: 'github_document'
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+
+NH11<- readRDS("C:/Users/John/Documents/R/logistic_regression/dataSets/NatHealth2011.rds")
+labs <- attributes(NH11)$labels
+
+str(NH11$hypev) # check stucture of hypev
+levels(NH11$hypev) # check levels of hypev
+# collapse all missing values to NA
+NH11$hypev <- factor(NH11$hypev, levels=c("2 No", "1 Yes"))
+
+# run our regression model
+hyp.out <- glm(hypev~age_p+sex+sleep+bmi,
+              data=NH11, family="binomial")
+coef(summary(hyp.out))
+```
+```{r}
+hyp.out.tab <- coef(summary(hyp.out))
+hyp.out.tab[, "Estimate"] <- exp(coef(hyp.out))
+hyp.out.tab
+
+```
+```{r}
+# Create a dataset with predictors set at desired levels
+predDat <- with(NH11,
+                expand.grid(age_p = c(33, 63),
+                            sex = "2 Female",
+                            bmi = mean(bmi, na.rm = TRUE),
+                            sleep = mean(sleep, na.rm = TRUE)))
+# predict hypertension at those levels
+cbind(predDat, predict(hyp.out, type = "response",
+                       se.fit = TRUE, interval="confidence",
+                       newdata = predDat))
+```
+```{r}
+library(effects)
+plot(allEffects(hyp.out))
+
+```
+
+
+```{r}
+#1.. Use glm to conduct a logistic regression to predict ever worked
+##      (everwrk) using age (age_p) and marital status (r_maritl).
+NH11$everwrk<- factor(NH11$everwrk,levels=c("1 Yes","2 No"))
+r_maritl_levels<- c("0 Under 14 years",
+                                           "1 Married-spouse in household",
+                                          "2 Married - spouse not in household",
+                                           "3 Married - spouse in household unknown",
+                                          "4 Widowed","5 Divorced",
+                                           " 8 Living with partner"," 9 Unknown marital status ")
+set.seed(200)
+NH11<- data.frame(everwrk=rbinom(1000,size=1,prob=0.5),
+                 age_p=runif(1000,20,50),
+                 r_maritl = sample(r_maritl_levels,size=1000,replace=TRUE))
+
+NH11 <- subset(NH11,as.numeric(NH11$r_maritl) != 3)
+
+ever.out <- glm(everwrk~age_p+ r_maritl,
+              data=NH11, family="binomial")
+
+coef(summary(ever.out))
+
+  ##2. Predict the probability of working for each level of marital
+##      status.
+
+predDat2<- with(NH11,expand.grid(r_maritl=ever.out$xlevels$r_maritl,age_p=mean(age_p,na.rm=TRUE)))
+
+#predict(ever.out,newdata=predDat2)
+
+cbind(predDat2, predict(ever.out, type = "response",
+                       se.fit = TRUE, interval="confidence",
+                       newdata = predDat2))
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
